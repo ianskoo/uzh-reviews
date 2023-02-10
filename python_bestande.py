@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from pprint import pprint
+from numpy import mean
 import requests
 
 """
@@ -90,9 +91,12 @@ if __name__ == "__main__":
                     msg += f"\n\n{rev['review']}"
                     msgs.append(msg)
             
+            # Compute average score
+            avg_score = mean([rev['review'] for rev in revs])
+            
             # Send reply
             if msgs:
-                tgBot.send(f"*Here's the reviews for {course_shortname}:*")
+                tgBot.send(f"*Here's the reviews for {course_shortname}:\n\nAverage review score: {avg_score * '★'}{(5-avg_score) * '☆'}*")
                 
                 for msg in msgs:
                     tgBot.send(msg)
