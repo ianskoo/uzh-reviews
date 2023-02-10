@@ -30,16 +30,16 @@ class TelegramBot():
         with open('data/token.txt', 'r') as f:
             lines = f.readlines()
             
-        self.chat_id = lines[0]
+        self.base_chat_id = lines[0]
         self.token = lines[1]
 
-    def send(self, msg:str):
-        url = f"https://api.telegram.org/bot{self.token}/sendMessage?chat_id={self.chat_id}&text={msg}&parse_mode=markdown"
+    def send(self, chat_id:int, msg:str):
+        url = f"https://api.telegram.org/bot{self.token}/sendMessage?chat_id={chat_id}&text={msg}&parse_mode=markdown"
         res = requests.get(url).json()
         # print(res)
     
     def receive(self, id_offset:int, polling_timeout:int=20):
-        url = f"https://api.telegram.org/bot{self.token}/getUpdates?chat_id={self.chat_id}&offset={id_offset}&timeout={polling_timeout}"
+        url = f"https://api.telegram.org/bot{self.token}/getUpdates?offset={id_offset}&timeout={polling_timeout}"
         return requests.get(url).json()
 
 
@@ -66,12 +66,13 @@ if __name__ == "__main__":
                 if req['result']:
                     course_shortname = req['result'][0]['message']['text']
                     id_offset = req['result'][0]['update_id'] + 1
+                    chat_id = req['result'][0]['message']['chat']['id']
                     
                     # Log request
                     with open('log.txt', 'a') as f:
                         f.write("".join([f"{datetime.now()}: ",
                                          f"{req['result'][0]['message']['from']['first_name']} ",
-                                         f"wrote {req['result'][0]['message']['text']}"]))
+                                         f"wrote {req['result'][0]['message']['text']}\n"]))
                 else:
                     continue
             except Exception as e:
@@ -105,7 +106,7 @@ if __name__ == "__main__":
             
             # Send reply
             if msgs:
-                tgBot.send(dedent(
+                tgBot.send(chat_id, dedent(
                     f"""
                     *{course_shortname}*
                     Average review score: {round(avg_score, 1)}\t{round(avg_score) * '★'}{(5-round(avg_score)) * '☆'}
@@ -115,10 +116,10 @@ if __name__ == "__main__":
                 )
                 
                 for msg in msgs:
-                    tgBot.send(msg)
+                    tgBot.send(chat_id, msg)
             else:
-                tgBot.send(f"*No reviews found.* Check the course name (case sensitive, for now) or deal with it 🤡")
+                tgBot.send(chat_id, f"*No reviews found.* Check the course name (case sensitive, for now) or deal with it 🤡")
         
     except Exception as e:
-        tgBot.send(f"I encountered an error. Shutting down. Error: {e}")
+        tgBot.send(tgBot.base_chat_id, f"I encountered an error. Shutting down. Error: {e}")
         exit()
