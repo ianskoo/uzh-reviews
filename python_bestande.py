@@ -2,6 +2,7 @@ from pymongo import MongoClient
 from pprint import pprint
 from numpy import mean
 from textwrap import dedent
+from datetime import datetime
 import requests
 
 """
@@ -65,6 +66,12 @@ if __name__ == "__main__":
                 if req['result']:
                     course_shortname = req['result'][0]['message']['text']
                     id_offset = req['result'][0]['update_id'] + 1
+                    
+                    # Log request
+                    with open('log.txt', 'a') as f:
+                        f.write("".join([f"{datetime.now()}: ",
+                                         f"{req['result'][0]['message']['from']['first_name']} ",
+                                         f"wrote {req['result'][0]['message']['text']}"]))
                 else:
                     continue
             except Exception as e:
