@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from pprint import pprint
 from numpy import mean
+from textwrap import dedent
 import requests
 
 """
@@ -91,17 +92,25 @@ if __name__ == "__main__":
                     msg += f"\n\n{rev['review']}"
                     msgs.append(msg)
             
-            # Compute average score
-            avg_score = mean([rev['review'] for rev in revs])
+                # Compute average score
+                scores = [rev['score'] for rev in revs]
+                avg_score = mean(scores)
             
             # Send reply
             if msgs:
-                tgBot.send(f"*Here's the reviews for {course_shortname}:\n\nAverage review score: {avg_score * '★'}{(5-avg_score) * '☆'}*")
+                tgBot.send(dedent(
+                    f"""
+                    *{course_shortname}*
+                    Average review score: {round(avg_score, 1)}\t{round(avg_score) * '★'}{(5-round(avg_score)) * '☆'}
+                    Reviews:
+                    """
+                    )
+                )
                 
                 for msg in msgs:
                     tgBot.send(msg)
             else:
-                tgBot.send(f"*No reviews found. Check the course name or deal with it.*")
+                tgBot.send(f"*No reviews found.* Check the course name (case sensitive, for now) or deal with it 🤡")
         
     except Exception as e:
         tgBot.send(f"I encountered an error. Shutting down. Error: {e}")
