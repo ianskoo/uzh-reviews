@@ -6,7 +6,7 @@ import requests
 ------------Useful Mongo commands:
 
 Create MongoDB docker container named pybestande with persistent data:
-sudo sudo docker run -d -p 27017:27017 --name pybestande -v mongo-data:/data/db mongo:latest
+sudo docker run -d -p 27017:27017 --name pybestande -v mongo-data:/data/db mongo:latest
 
 Start mongodb with:
 sudo docker start pybestande;
@@ -52,48 +52,53 @@ if __name__ == "__main__":
     id_offset = 0
     debug = False
 
-    while True:
-        # Get request
-        try:
-            req = tgBot.receive(id_offset=id_offset, polling_timeout=30)
-            if debug:
-                print("Offset: ", id_offset)
-                pprint(req)
-            if req['result']:
-                course_shortname = req['result'][0]['message']['text']
+    try:
+        while True:
+            # Get request
+            try:
+                req = tgBot.receive(id_offset=id_offset, polling_timeout=30)
+                if debug:
+                    print("Offset: ", id_offset)
+                    pprint(req)
+                if req['result']:
+                    course_shortname = req['result'][0]['message']['text']
+                    id_offset = req['result'][0]['update_id'] + 1
+                else:
+                    continue
+            except Exception as e:
+                # tgBot.send(f"*Command not understood. Please try again.*\nRequest format: <course shortname>")
+                if debug:
+                    print("Exception: ", e)
                 id_offset = req['result'][0]['update_id'] + 1
-            else:
                 continue
-        except Exception as e:
-            # tgBot.send(f"*Command not understood. Please try again.*\nRequest format: <course shortname>")
-            if debug:
-                print("Exception: ", e)
-            id_offset = req['result'][0]['update_id'] + 1
-            continue
-        
-        # Look for reviews
-        msgs = []
-        revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
-        
-        if revs:
-            for rev in revs:
-                # pprint(rev)
-                if not rev['review']:
-                    rev['review'] = ''
-                    
-                msg = f"{rev['score'] * '★'}{(5-rev['score']) * '☆'}"
-                
-                if 'upvotes' in rev and 'downvotes' in rev:
-                    msg += f"\t\t\t{rev['upvotes']} 👍  {rev['downvotes']} 👎"
-                
-                msg += f"\n\n{rev['review']}"
-                msgs.append(msg)
-        
-        # Send reply
-        if msgs:
-            tgBot.send(f"*Here's the reviews for {course_shortname}:*")
             
-            for msg in msgs:
-                tgBot.send(msg)
-        else:
-            tgBot.send(f"*No reviews found. Check the course name or deal with it.*")
+            # Look for reviews
+            msgs = []
+            revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
+            
+            if revs:
+                for rev in revs:
+                    # pprint(rev)
+                    if not rev['review']:
+                        rev['review'] = ''
+                        
+                    msg = f"{rev['score'] * '★'}{(5-rev['score']) * '☆'}"
+                    
+                    if 'upvotes' in rev and 'downvotes' in rev:
+                        msg += f"\t\t\t{rev['upvotes']} 👍  {rev['downvotes']} 👎"
+                    
+                    msg += f"\n\n{rev['review']}"
+                    msgs.append(msg)
+            
+            # Send reply
+            if msgs:
+                tgBot.send(f"*Here's the reviews for {course_shortname}:*")
+                
+                for msg in msgs:
+                    tgBot.send(msg)
+            else:
+                tgBot.send(f"*No reviews found. Check the course name or deal with it.*")
+        
+    except Exception as e:
+        tgBot.send(f"I encountered an error. Shutting down. Error: {e}")
+        exit()
