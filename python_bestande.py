@@ -71,6 +71,9 @@ if __name__ == "__main__":
                     print("Offset: ", id_offset)
                     pprint(req)
                 if req['result']:
+                    id_offset = req['result'][0]['update_id'] + 1
+                    chat_id = req['result'][0]['message']['chat']['id']
+                    
                     query_uni = ""
                     if req['result'][0]['message']['text'].split(','):
                         query_sname, query_uni = req['result'][0]['message']['text'].split(',')
@@ -78,8 +81,6 @@ if __name__ == "__main__":
                     else:
                         query_sname = req['result'][0]['message']['text']
                         
-                    id_offset = req['result'][0]['update_id'] + 1
-                    chat_id = req['result'][0]['message']['chat']['id']
                     
                     # Log request
                     with open(os.path.join(tgBot.dir_path, 'log.txt'), 'a') as f:
