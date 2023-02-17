@@ -1,3 +1,4 @@
+import os 
 from pymongo import MongoClient
 from pprint import pprint
 from numpy import mean
@@ -27,7 +28,9 @@ class TelegramBot():
     
     def __init__(self) -> None:
         
-        with open('data/token.txt', 'r') as f:
+        self.dir_path = os.path.dirname(os.path.realpath(__file__))
+        
+        with open(os.path.join(self.dir_path, 'data/token.txt'), 'r') as f:
             lines = f.readlines()
             
         self.base_chat_id = lines[0]
@@ -69,7 +72,7 @@ if __name__ == "__main__":
                     chat_id = req['result'][0]['message']['chat']['id']
                     
                     # Log request
-                    with open('log.txt', 'a') as f:
+                    with open(os.path.join(tgBot.dir_path, 'log.txt'), 'a') as f:
                         f.write("".join([f"{datetime.now()}: ",
                                          f"{req['result'][0]['message']['from']['first_name']} ",
                                          f"wrote {req['result'][0]['message']['text']}\n"]))
