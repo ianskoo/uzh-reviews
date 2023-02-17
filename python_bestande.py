@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 else:
                     continue
             except Exception as e:
-                tgBot.send(f"*Command not understood. Please try again.*\nRequest format: <course shortname>, <UZH/ETH>")
+                tgBot.send(chat_id, f"*Command not understood. Please try again.*\nRequest format: <course shortname>, <UZH/ETH>")
                 print("Exception: ", e)
                 id_offset = req['result'][0]['update_id'] + 1
                 continue
