@@ -71,7 +71,13 @@ if __name__ == "__main__":
                     print("Offset: ", id_offset)
                     pprint(req)
                 if req['result']:
-                    query = req['result'][0]['message']['text']
+                    query_uni = ""
+                    if req['result'][0]['message']['text'].split(','):
+                        query_sname, query_uni = req['result'][0]['message']['text'].split(',')
+                        query_uni = query_uni.upper().strip()
+                    else:
+                        query_sname = req['result'][0]['message']['text']
+                        
                     id_offset = req['result'][0]['update_id'] + 1
                     chat_id = req['result'][0]['message']['chat']['id']
                     
@@ -83,20 +89,30 @@ if __name__ == "__main__":
                 else:
                     continue
             except Exception as e:
-                # tgBot.send(f"*Command not understood. Please try again.*\nRequest format: <course shortname>")
-                if debug:
-                    print("Exception: ", e)
+                tgBot.send(f"*Command not understood. Please try again.*\nRequest format: <course shortname>, <UZH/ETH>")
+                print("Exception: ", e)
                 id_offset = req['result'][0]['update_id'] + 1
                 continue
             
-            # Text search query and use most probable course
-            candidates = [cname['courseNameShort'] for cname in data.find({"$text": {"$search": query}}, {'courseNameShort': 1}).limit(100)]         
-            course_shortname = max(set(candidates), key = candidates.count)
+            # Look up if shortname matches perfectly to a db entry
+            search = {'courseNameShort':query_sname}
+            if query_uni:
+                search['university'] = query_uni
+                
+            if not list(data.find(search, {'courseNameShort': 1, '_id':0}).limit(100)):
+                # Text search query and use most probable course
+                candidates = [cname['courseNameShort'] for cname in data.find({"$text": {"$search": query_sname}}, 
+                                                                              {'courseNameShort': 1, '_id':0}).limit(500)]         
+                search['courseNameShort'] = max(set(candidates), key = candidates.count)
             
             # Look for reviews
             msgs = []
-            revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
-            # revs = list(data.find({"$text": {"$search": course_shortname}}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
+            revs = list(data.find(search, 
+                                  {'review':1, 
+                                   'score':1, 
+                                   'upvotes':1, 
+                                   'downvotes':1, 
+                                   '_id':0}))
             
             if revs:
                 for rev in revs:
@@ -120,7 +136,7 @@ if __name__ == "__main__":
             if msgs:
                 tgBot.send(chat_id, dedent(
                     f"""
-                    *{course_shortname}*
+                    *{query_sname}*, {query_uni}
                     Average review score: {round(avg_score, 1)}\t{round(avg_score) * '★'}{(5-round(avg_score)) * '☆'}
                     Reviews count: {len(scores)}
                     
