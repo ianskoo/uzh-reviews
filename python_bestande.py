@@ -10,7 +10,7 @@ import requests
 ------------Useful Mongo commands:
 
 Create MongoDB docker container named pybestande with persistent data:
-sudo docker run -d -p 27017:27017 --name pybestande -v mongo-data:/data/db mongo:latest
+sudo docker run -d -p 27017:27017 --name pybestande --restart unless-stopped -v mongo-data:/data/db mongo:latest
 
 Start mongodb with:
 sudo docker start pybestande;
@@ -44,6 +44,7 @@ class TelegramBot():
     def receive(self, id_offset:int, polling_timeout:int=20):
         url = f"https://api.telegram.org/bot{self.token}/getUpdates?offset={id_offset}&timeout={polling_timeout}"
         return requests.get(url).json()
+    
 
 
 if __name__ == "__main__":
@@ -87,7 +88,8 @@ if __name__ == "__main__":
             
             # Look for reviews
             msgs = []
-            revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
+            # revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
+            revs = list(data.find({"$text": {"$search": course_shortname}}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
             
             if revs:
                 for rev in revs:
