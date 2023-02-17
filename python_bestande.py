@@ -21,6 +21,9 @@ sudo docker exec -it pybestande mongosh;
 Import JSON to mongodb:
 sudo docker exec -i pybestande bash -c 'mongoimport -c pybestande --jsonArray' < /home/chris/scripts/python-bestande/data/bestande_reviews.json;
 
+Create index for text search:
+db.pybestande.createIndex({courseNameShort:"text"})
+
 """
 
 
@@ -68,7 +71,7 @@ if __name__ == "__main__":
                     print("Offset: ", id_offset)
                     pprint(req)
                 if req['result']:
-                    course_shortname = req['result'][0]['message']['text']
+                    query = req['result'][0]['message']['text']
                     id_offset = req['result'][0]['update_id'] + 1
                     chat_id = req['result'][0]['message']['chat']['id']
                     
@@ -86,16 +89,20 @@ if __name__ == "__main__":
                 id_offset = req['result'][0]['update_id'] + 1
                 continue
             
+            # Text search query and use most probable course
+            candidates = [cname['courseNameShort'] for cname in data.find({"$text": {"$search": query}}, {'courseNameShort': 1}).limit(100)]         
+            course_shortname = max(set(candidates), key = candidates.count)
+            
             # Look for reviews
             msgs = []
-            # revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
-            revs = list(data.find({"$text": {"$search": course_shortname}}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
+            revs = list(data.find({'courseNameShort':course_shortname}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
+            # revs = list(data.find({"$text": {"$search": course_shortname}}, {'review':1, 'score':1, 'upvotes':1, 'downvotes':1}))
             
             if revs:
                 for rev in revs:
                     # pprint(rev)
                     if not rev['review']:
-                        rev['review'] = ''
+                        continue
                         
                     msg = f"{rev['score'] * '★'}{(5-rev['score']) * '☆'}"
                     
@@ -115,7 +122,16 @@ if __name__ == "__main__":
                     f"""
                     *{course_shortname}*
                     Average review score: {round(avg_score, 1)}\t{round(avg_score) * '★'}{(5-round(avg_score)) * '☆'}
-                    Reviews:
+                    Reviews count: {len(scores)}
+                    
+                    Distribution:
+                    ★★★★★ {round(scores.count(5)/len(scores)*100)}%
+                    ★★★★☆ {round(scores.count(4)/len(scores)*100)}%
+                    ★★★☆☆ {round(scores.count(3)/len(scores)*100)}%
+                    ★★☆☆☆ {round(scores.count(2)/len(scores)*100)}%
+                    ★☆☆☆☆ {round(scores.count(1)/len(scores)*100)}%
+                    
+                    Written reviews:
                     """
                     )
                 )
