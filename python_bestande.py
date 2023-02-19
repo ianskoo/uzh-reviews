@@ -74,13 +74,11 @@ if __name__ == "__main__":
                     id_offset = req['result'][0]['update_id'] + 1
                     chat_id = req['result'][0]['message']['chat']['id']
                     
+                    query_lst = req['result'][0]['message']['text'].split(',')
+                    query_sname = query_lst[0]
                     query_uni = ""
-                    if req['result'][0]['message']['text'].split(','):
-                        query_sname, query_uni = req['result'][0]['message']['text'].split(',')
-                        query_uni = query_uni.upper().strip()
-                    else:
-                        query_sname = req['result'][0]['message']['text']
-                        
+                    if len(query_lst) == 2:
+                        query_uni = query_lst[1].upper().strip()
                     
                     # Log request
                     with open(os.path.join(tgBot.dir_path, 'log.txt'), 'a') as f:
@@ -107,14 +105,25 @@ if __name__ == "__main__":
                 search['courseNameShort'] = max(set(candidates), key = candidates.count)
             
             # Look for reviews
-            msgs = []
             revs = list(data.find(search, 
                                   {'review':1, 
                                    'score':1, 
                                    'upvotes':1, 
                                    'downvotes':1, 
+                                   'university':1,
                                    '_id':0}))
             
+            # Check if course is unique between UZH/ETH if no uni specified
+            unis = set(rev['university'] for rev in revs)
+            if len(unis) > 1:
+                tgBot.send(chat_id, 
+                           "*Warning! The course shortname is not unique between UZH/ETH*, " +
+                            "please specify which university you want after the course name as follows:\n\n" +
+                            "Request format: <course shortname>, <UZH/ETH>")
+                continue
+            
+            # Write messages for written reviews
+            msgs = []
             if revs:
                 for rev in revs:
                     # pprint(rev)
@@ -125,6 +134,7 @@ if __name__ == "__main__":
                     
                     if 'upvotes' in rev and 'downvotes' in rev:
                         msg += f"\t\t\t{rev['upvotes']} 👍  {rev['downvotes']} 👎"
+                        
                     
                     msg += f"\n\n{rev['review']}"
                     msgs.append(msg)
@@ -137,7 +147,7 @@ if __name__ == "__main__":
             if msgs:
                 tgBot.send(chat_id, dedent(
                     f"""
-                    *{query_sname}*, {query_uni}
+                    *{search['courseNameShort']}*  {query_uni}
                     Average review score: {round(avg_score, 1)}\t{round(avg_score) * '★'}{(5-round(avg_score)) * '☆'}
                     Reviews count: {len(scores)}
                     
